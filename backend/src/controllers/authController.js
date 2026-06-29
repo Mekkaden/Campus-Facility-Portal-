@@ -1,6 +1,9 @@
 const complaintModel = require('../models/Complaint');
 const Otp = require('../models/Otp');
 const sendOtpEmail = require('../utils/sendEmail');
+const jwt = require('jsonwebtoken');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback_jwt_secret_key_123';
 
 async function sendOtp(req, res) {
     const email = req.body.email;
@@ -42,10 +45,13 @@ async function verifyOtp(req, res) {
         await Otp.deleteOne({ _id: record._id });
         const hash = complaintModel.generateStudentHash(email);
         
+        const token = jwt.sign({ email, role: 'student' }, JWT_SECRET, { expiresIn: '1h' });
+
         return res.status(200).json({ 
             success: true, 
             message: 'Student identity verified securely.',
-            hashMarker: hash.substring(0, 8) + '...'
+            hashMarker: hash.substring(0, 8) + '...',
+            token: token
         });
     } catch (error) {
         console.error('OTP verification error:', error);
@@ -53,7 +59,21 @@ async function verifyOtp(req, res) {
     }
 }
 
+async function adminLogin(req, res) {
+    const { username, password } = req.body;
+    const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
+    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'deepimpact123';
+
+    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+        const token = jwt.sign({ role: 'admin' }, JWT_SECRET, { expiresIn: '8h' });
+        return res.status(200).json({ success: true, token: token });
+    } else {
+        return res.status(401).json({ error: 'Invalid credentials. Access denied.' });
+    }
+}
+
 module.exports = {
     sendOtp,
-    verifyOtp
+    verifyOtp,
+    adminLogin
 };

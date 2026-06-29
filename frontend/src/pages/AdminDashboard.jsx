@@ -7,10 +7,12 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 
-// ─── fake creds ───────────────────────────────────────────────────────────────
-const FAKE_ADMIN = { username: 'admin', password: 'deepimpact123' };
+// ─── auth utils ───────────────────────────────────────────────────────────────
+function getAdminToken() {
+    return sessionStorage.getItem('adminToken');
+}
 
-const api = axios.create({ baseURL: 'http://localhost:5001/api' });
+const api = axios.create({ baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5001/api' });
 
 // ─── util: status badge ───────────────────────────────────────────────────────
 function StatusBadge({ status }) {
@@ -41,7 +43,7 @@ function LoginScreen({ onLogin }) {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-    const [shaking, setShaking] = useState(false);
+    const [, setShaking] = useState(false);
 
     useEffect(function () {
         gsap.from(cardRef.current, { y: 30, duration: 0.5, ease: 'power3.out' });
@@ -49,13 +51,18 @@ function LoginScreen({ onLogin }) {
 
     function handleSubmit(e) {
         e.preventDefault();
-        if (username === FAKE_ADMIN.username && password === FAKE_ADMIN.password) {
-            gsap.to(cardRef.current, { scale: 0.95, y: -10, duration: 0.25, ease: 'power2.in', onComplete: onLogin });
-        } else {
-            setError('Invalid credentials. Access denied.');
-            setShaking(true);
-            gsap.fromTo(cardRef.current, { x: -10 }, { x: 10, duration: 0.07, repeat: 5, yoyo: true, ease: 'none', onComplete: function () { gsap.set(cardRef.current, { x: 0 }); setShaking(false); } });
-        }
+        api.post('/auth/admin/login', { username, password })
+            .then(function (res) {
+                if (res.data.success && res.data.token) {
+                    sessionStorage.setItem('adminToken', res.data.token);
+                    gsap.to(cardRef.current, { scale: 0.95, y: -10, duration: 0.25, ease: 'power2.in', onComplete: onLogin });
+                }
+            })
+            .catch(function () {
+                setError('Invalid credentials. Access denied.');
+                setShaking(true);
+                gsap.fromTo(cardRef.current, { x: -10 }, { x: 10, duration: 0.07, repeat: 5, yoyo: true, ease: 'none', onComplete: function () { gsap.set(cardRef.current, { x: 0 }); setShaking(false); } });
+            });
     }
 
     return (
@@ -133,7 +140,7 @@ export default function AdminDashboard() {
         if (!authed) return;
         gsap.fromTo(containerRef.current, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' });
 
-        api.get('/complaints/admin/complaints')
+        api.get('/complaints/admin/complaints', { headers: { Authorization: `Bearer ${getAdminToken()}` } })
             .then(function (res) {
                 setComplaints(res.data);
                 setLoading(false);
@@ -143,12 +150,17 @@ export default function AdminDashboard() {
             })
             .catch(function (err) {
                 console.error('Fetch error:', err);
+                if (err.response && err.response.status === 401) {
+                    sessionStorage.removeItem('adminAuthed');
+                    sessionStorage.removeItem('adminToken');
+                    setAuthed(false);
+                }
                 setLoading(false);
             });
     }, [authed]);
 
     function handleLogout() {
-        gsap.to(containerRef.current, { opacity: 0, y: 16, duration: 0.3, onComplete: function () { sessionStorage.removeItem('adminAuthed'); setAuthed(false); setComplaints([]); setLoading(true); } });
+        gsap.to(containerRef.current, { opacity: 0, y: 16, duration: 0.3, onComplete: function () { sessionStorage.removeItem('adminAuthed'); sessionStorage.removeItem('adminToken'); setAuthed(false); setComplaints([]); setLoading(true); } });
     }
 
     if (!authed) {

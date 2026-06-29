@@ -1,7 +1,7 @@
 const complaintModel = require('../models/Complaint');
 
 function submitComplaint(req, res) {
-    const email = req.body.email;
+    const email = req.user.email;
     const category = req.body.category;
     const title = req.body.title;
     const description = req.body.description;

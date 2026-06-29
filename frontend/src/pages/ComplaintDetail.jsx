@@ -8,7 +8,11 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 
-const api = axios.create({ baseURL: 'http://localhost:5001/api' });
+const api = axios.create({ baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5001/api' });
+
+function getAdminToken() {
+    return sessionStorage.getItem('adminToken');
+}
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
 function Toast({ message, type, onDone }) {
@@ -22,7 +26,7 @@ function Toast({ message, type, onDone }) {
             gsap.to(ref.current, { y: 24, opacity: 0, scale: 0.96, duration: 0.3, ease: 'power2.in', onComplete: onDone });
         }, 3000);
         return function () { clearTimeout(timer); };
-    }, []);
+    }, [onDone]);
 
     const colors = {
         success: { bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.3)', text: '#10B981' },
@@ -151,24 +155,25 @@ export default function ComplaintDetail() {
         setToast({ message: message, type: type || 'success', key: Date.now() });
     }, []);
 
-    function fetchComplaint() {
+    const fetchComplaint = useCallback(function () {
         setLoading(true);
         setError('');
-        api.get('/complaints/admin/complaints/' + id)
+        api.get('/complaints/admin/complaints/' + id, { headers: { Authorization: `Bearer ${getAdminToken()}` } })
             .then(function (res) {
                 setComplaint(res.data);
                 setLoading(false);
             })
             .catch(function (err) {
                 console.error('Fetch error:', err);
+                if (err.response && err.response.status === 401) navigate('/admin');
                 setError('Failed to load complaint. Please check your connection.');
                 setLoading(false);
             });
-    }
+    }, [id]);
 
     useEffect(function () {
         fetchComplaint();
-    }, [id]);
+    }, [fetchComplaint]);
 
     useEffect(function () {
         if (complaint && containerRef.current) {
@@ -181,7 +186,7 @@ export default function ComplaintDetail() {
 
     function handleDeleteAction(toastMsg) {
         setUpdating(true);
-        api.delete('/complaints/admin/complaints/' + id)
+        api.delete('/complaints/admin/complaints/' + id, { headers: { Authorization: `Bearer ${getAdminToken()}` } })
             .then(function () {
                 setUpdating(false);
                 showToast(toastMsg, 'success');
@@ -198,7 +203,7 @@ export default function ComplaintDetail() {
         e.preventDefault();
         if (!noteText.trim()) return;
         setAddingNote(true);
-        api.post('/complaints/admin/complaints/' + id + '/notes', { text: noteText })
+        api.post('/complaints/admin/complaints/' + id + '/notes', { text: noteText }, { headers: { Authorization: `Bearer ${getAdminToken()}` } })
             .then(function (res) {
                 setComplaint(res.data.complaint);
                 setNoteText('');

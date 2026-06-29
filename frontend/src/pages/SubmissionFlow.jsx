@@ -6,7 +6,7 @@ import { Mail, ShieldCheck, ArrowRight, CheckCircle, Loader2, XCircle } from 'lu
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: 'http://localhost:5001/api'
+    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
 });
 
 export default function SubmissionFlow() {
@@ -14,6 +14,7 @@ export default function SubmissionFlow() {
     const [complaintData, setComplaintData] = useRecoilState(complaintDataState);
     const [isLoading, setIsLoading] = useState(false);
     const [rejectionMessage, setRejectionMessage] = useState('');
+    const [token, setToken] = useState('');
     const containerRef = useRef(null);
     const formRef = useRef(null);
 
@@ -38,7 +39,7 @@ export default function SubmissionFlow() {
 
         setIsLoading(true);
         api.post('/auth/send-otp', { email: complaintData.email })
-            .then(function (response) {
+            .then(function () {
                 setIsLoading(false);
                 gsap.to(formRef.current, {
                     x: -50,
@@ -69,7 +70,10 @@ export default function SubmissionFlow() {
 
         setIsLoading(true);
         api.post('/auth/verify-otp', { email: complaintData.email, otp: complaintData.otp.trim() })
-            .then(function (response) {
+            .then(function (res) {
+                if (res.data.token) {
+                    setToken(res.data.token);
+                }
                 setIsLoading(false);
                 gsap.to(formRef.current, {
                     x: -50,
@@ -140,7 +144,9 @@ export default function SubmissionFlow() {
             category: complaintData.category,
             title: complaintData.title,
             description: complaintData.description
-        }).then(function (response) {
+        }, {
+            headers: { Authorization: `Bearer ${token}` }
+        }).then(function () {
             setIsLoading(false);
             gsap.to(formRef.current, {
                 y: -30,
