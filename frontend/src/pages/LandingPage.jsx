@@ -76,7 +76,7 @@ export default function LandingPage() {
                         Submit Feedback
                         <ArrowRight size={20} />
                     </button>
-                    <a href="https://github.com/your-username/campus-facility-portal" target="_blank" rel="noopener noreferrer" className="btn-secondary" style={{ padding: '16px 32px', fontSize: '1.125rem', display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
+                    <a href="https://github.com/Mekkaden/Campus-Facility-Portal-" target="_blank" rel="noopener noreferrer" className="btn-secondary" style={{ padding: '16px 32px', fontSize: '1.125rem', display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
                         <Github size={20} />
                         View Source
                     </a>
